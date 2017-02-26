@@ -14,7 +14,7 @@ public class AI {
 
     /* Configuration */
     public final String ROOM = "password";
-    public final String TEAM = "Crosemont";
+    public final String TEAM = "Auto-Kamikaze ;)";
 
     /* Déplacement de l'A.I. */
     public final char[] directions = {'u', 'l', 'd', 'r'};
@@ -51,13 +51,6 @@ public class AI {
      */
     public char next(JSONArray prevMoves) throws JSONException {
         
-        /*Essai 
-        Thread findDirection =new Thread(){
-            public void run(){
-                direction = shyAI();
-            }
-        };findDirection.start();*/
-        
         System.out.print("Mouvements précédents : ");
 
         for (int i = 0; i < prevMoves.length(); i++) {
@@ -89,10 +82,9 @@ public class AI {
             grille[new0][new1] = (char) ('0' + i);
         }
         
-        //direction = shyAI();
+        direction = safestPath();
         //directionSecondeAI(prevMoves);
         //direction =directions[random.nextInt(directions.length)];
-        direction =
         System.out.println("Mouvement choisi : " + direction);
 
         printGrille();
@@ -270,56 +262,50 @@ public class AI {
      * Méthode qui retourne le nombre de cases vides au haut du personnage
      * @return nombre de cases vides au haut
      */
-    public int upFree(){
-        int casesVides=0;
-        int countVariationDePosition=1;
-        while(grille[clamp(newPos[me][0] - countVariationDePosition,grille.length-1)][newPos[me][1]] == ' '){
-            casesVides++;
-            countVariationDePosition++;
+    public boolean upFree(){
+        boolean okay = false;
+        if(grille[clamp(newPos[me][0] - 1,grille.length-1)][newPos[me][1]] == ' '){
+            okay = true;
         }
-        return casesVides;
+        return okay;
     }
     
     /**
      * Méthode qui retourne le nombre de cases vides au dessous du personnage
      * @return nombre de cases vides au bas
      */
-    public int downFree(){
-       int casesVides=0;
-       int countVariationDePosition=1; 
-       while(grille[clamp(newPos[me][0] + countVariationDePosition,grille.length-1)][newPos[me][1]] == ' '){
-           casesVides++;
-           countVariationDePosition++;
+    public boolean downFree(){
+       boolean okay=false;
+       if(grille[clamp(newPos[me][0] + 1,grille.length-1)][newPos[me][1]] == ' '){
+           okay=true;
        }
-       return casesVides;
+       return okay;
     }
     
     /**
      * Méthode qui retourne le nombre de cases vides à gauche du personnage
      * @return nombre de cases vides à gauche
      */
-    public int leftFree(){
-       int casesVides=0;
-       int countVariationDePosition=1; 
-       while(grille[newPos[me][0]][clamp(newPos[me][1] - countVariationDePosition,grille.length-1)] == ' '){
-           casesVides++;
-           countVariationDePosition++;
+    public boolean leftFree(){
+       boolean okay = false;
+       if(grille[newPos[me][0]][clamp(newPos[me][1] - 1,grille.length-1)] == ' '){
+           okay = true;
        }
-       return casesVides; 
+       return okay; 
     }
     
     /**
      * Méthode qui retourne le nombre de cases vides à droite du personnage
      * @return nombre de cases vides à droite
      */
-    public int rightFree(){
-       int casesVides=0;
-       int countVariationDePosition=1; 
-       while(grille[newPos[me][0]][clamp(newPos[me][1] + countVariationDePosition,grille.length-1)] == ' '){
-           casesVides++;
-           countVariationDePosition++;
+    public boolean rightFree(){
+
+       boolean okay=false;
+       if(grille[newPos[me][0]][clamp(newPos[me][1] + 1,grille.length-1)] == ' '){
+
+           okay = true;
        }
-       return casesVides; 
+       return okay; 
     }
     
     /**
@@ -327,37 +313,18 @@ public class AI {
      * @return direction sécuritaire pour l'AI
      */
     public char safestPath(){
-        char safeWay='*'; //Valeur si toutes les directions sont autant sécuritaires
-        int max=Integer.MIN_VALUE;
-        if(upFree()>max){
-            max=upFree();
-            safeWay = 'u';
+        
+        if(upFree()){
+            return 'u';
+        }else if(downFree()){
+            return 'd';
+        }else if(leftFree()){
+            return 'l';
+        }else if(rightFree()){
+            return 'r';
+        }else{
+            return directions[random.nextInt(directions.length)];
         }
-        if(downFree()>max){
-            max=downFree();
-            safeWay = 'd';
-        }
-        if(leftFree()>max){
-            max=leftFree();
-            safeWay = 'l';
-        }
-        if(rightFree()>max){
-            safeWay = 'r';
-        }
-        return safeWay;
     }
     
-    /**
-     * AI peureuse (expérimentale)
-     * @return direction choisie par l'AI
-     */
-    public char shyAI(){
-        final char safestPath = safestPath();
-        System.out.println("SafestPath Done:"+safestPath);
-        if(safestPath=='*'){
-            return directions[random.nextInt(directions.length)]; //Gestion de la décision aléatoire lorsque l'AI peureuse a le choix
-        }else{
-            return safestPath; //retourne u,d,l ou r
-        }
-    }
 }
