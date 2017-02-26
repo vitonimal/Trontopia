@@ -1,9 +1,11 @@
 package cybercycles;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Random;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.apache.commons.lang.ArrayUtils;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -12,7 +14,7 @@ public class AI {
 
     /* Configuration */
     public final String ROOM = "password";
-    public final String TEAM = "CRosemont23";
+    public final String TEAM = "CRosemont";
 
     /* Déplacement de l'A.I. */
     public final char[] directions = {'u', 'l', 'd', 'r'};
@@ -28,6 +30,7 @@ public class AI {
     /*Positions des joueurs*/
     int[][] oldPos = new int[5][2];
     int[][] newPos = new int[5][2];
+    ArrayList<Integer> deadPlayers = new ArrayList<Integer>();
 
     /**
      * Fonction appelée en début de partie.
@@ -55,20 +58,36 @@ public class AI {
         }
 
         System.out.print("\n");
-
-        //updatePosi(prevMoves);
+        updatePosi(prevMoves);
         for (int i = 1; i < oldPos.length; i++) {
-            grille[oldPos[i][0]][oldPos[i][1]] = 'W';
-            grille[newPos[i][0]][newPos[i][1]] = (char) ('0' + i);
+            int old0 = clamp(oldPos[i][0], grille.length-1);
+            int old1 = clamp(oldPos[i][1], grille[0].length-1);
+            int new0 = clamp(newPos[i][0], grille.length-1);
+            int new1 = clamp(newPos[i][1], grille[0].length-1);
+            if (old0 < 0) {
+                old0 = 0;
+            }
+            if (old1 < 0) {
+                old1 = 0;
+            }
+            if (new0 < 0) {
+                new0 = 0;
+            }
+            if (new1 < 0) {
+                new1 = 0;
+            }
+
+            grille[old0][old1] = 'W';
+            grille[new0][new1] = (char) ('0' + i);
         }
         // Choisis une direction au hasard, mais pas la direction précédente
-        direction = directions[random.nextInt(directions.length)];
-
+        //direction = directions[random.nextInt(directions.length)];
+        //directionSecondeAI(prevMoves);
         System.out.println("Mouvement choisi : " + direction);
 
         printGrille();
 
-        return directionSecondeAI(prevMoves);
+        return direction;
     }
 
     /**
@@ -91,13 +110,9 @@ public class AI {
         me = Integer.parseInt(config.getString("me"));
 
         System.out.println("Joueurs : " + players);
-
         System.out.println("Obstacles : " + s);
-
         System.out.print("Taille de la grille : ");
-
         System.out.println(width + " x " + height);
-
         System.out.println("Votre identifiant : " + me);
 
         /*Building the grid*/
@@ -125,10 +140,18 @@ public class AI {
             JSONObject player = players.getJSONObject(i);
             int posy = clamp(Integer.parseInt(player.getString("y")), height);
             int posx = clamp(Integer.parseInt(player.getString("x")), width);
-            grille[posy][posx] = (char) ((i + 1) + '0');
+            if (grille[posy][posx] == ' ') {
+                grille[posy][posx] = (char) ((i + 1) + '0');
+            } else if (grille[posy][posx] != ' ') {
+                deadPlayers.add(i);
+            }
             oldPos[i + 1][0] = posy;
             oldPos[i + 1][1] = posx;
             System.out.println("pos de" + (i + 1) + ":" + posy + ", " + posx);
+        }
+        for (int i = 0; i < oldPos.length; i++) {
+            newPos[i][0] = oldPos[i][0];
+            newPos[i][1] = oldPos[i][1];
         }
 
         printGrille();
@@ -141,6 +164,14 @@ public class AI {
         }
     }
 
+    /**
+     *
+     * @param name the value of name
+     */
+    protected void printArray(final String name, final int[][] array) {
+        System.out.println(name + Arrays.deepToString(array));
+    }
+
     public static int clamp(int val, int max) {
         return Math.max(0, Math.min(max, val));
     }
@@ -149,56 +180,72 @@ public class AI {
      * Méthode qui met à jour les coordonnées des joueurs
      */
     public void updatePosi(JSONArray prevMoves) throws JSONException {
-        oldPos = newPos;
-        if (prevMoves.length() == 0) {
+        for (int i = 0; i < 5; i++) {
+            oldPos[i][0] = newPos[i][0];
+            oldPos[i][1] = newPos[i][1];
+        }
+        printArray("newPos:", newPos);
+        printArray("oldPos:", oldPos);
+
+        if (prevMoves.length()== 0) {
             System.out.println("prevMoves.length() ==0");
             return;
         }
-        for (int count = 1; count < prevMoves.length() + 1; count++) {
-            char direction = prevMoves.getJSONObject(count - 1).getString("direction").charAt(0);
-            if (direction == 'u') {
-                newPos[count][0] -= 1;
-            } else if (direction == 'd') {
-                newPos[count][0] += 1;
-            } else if (direction == 'l') {
-                newPos[count][1] -= 1;
-            } else if (direction == 'r') {
-                newPos[count][1] += 1;
-            } else {
-                System.out.println("UNKNOWN CHARACTER:" + direction);
+        for (int i = 1; i < 5 - deadPlayers.size(); i++) {
+            //If player is dead, stop updating it.
+            if (deadPlayers.contains(i)) {
+                i++;
             }
+            try {
+                char direction = prevMoves.getJSONObject(i - 1).getString("direction").charAt(0);
+
+                if (direction == 'u') {
+                    newPos[i][0] -= 1;
+                } else if (direction == 'd') {
+                    newPos[i][0] += 1;
+                } else if (direction == 'l') {
+                    newPos[i][1] -= 1;
+                } else if (direction == 'r') {
+                    newPos[i][1] += 1;
+                } else {
+                    System.out.println("UNKNOWN CHARACTER:" + direction);
+                }
+            } catch (JSONException e) {
+                System.err.println(e.toString());
+            }
+
         }
-        System.out.println("newPos:" + Arrays.deepToString(newPos));
+        printArray("newPos:", newPos);
     }
 
-    public char directionSecondeAI(JSONArray prevMoves) throws JSONException {
-        for (int count = 1; count < prevMoves.length() + 1; count++) {
-           if (direction == 'u') {
-            if (grille[newPos[count][0] - 1][newPos[count][1]] == ' ') {
-                newPos[count][0] -= 1;
-                return 'u';
-            }
-            } else if (direction == 'd') {
-                if (grille[newPos[count][0] + 1][newPos[count][1]] == ' ') {
-                    newPos[count][0] += 1;
-                    return 'd';
+    /*public char directionSecondeAI(JSONArray prevMoves) throws JSONException{
+        direction = directions[random.nextInt(directions.length)];            
+            char direction = prevMoves.getJSONObject(me).getString("direction").charAt(0);
+            if (direction == 'u') {
+                if(grille[newPos[me][0]-1][newPos[me][1]]==' '){
+                    return 'u';
                 }
-            } else if (direction == 'l') {
-                if (grille[newPos[count][0]][newPos[count][1] - 1] == ' ') {
-                    newPos[count][1] -= 1;
+            }
+            else if (direction == 'd') {
+                if(grille[newPos[me][0]+1][newPos[me][1]]==' '){
+                    return 'd';
+                } 
+            }
+            else if (direction == 'l') {
+                if(grille[newPos[me][0]][newPos[me][1]-1]==' '){
                     return 'l';
                 }
-            } else if (direction == 'r') {
-                if (grille[newPos[count][0]][newPos[count][1] + 1] == ' ') {
-                    newPos[count][1] += 1;
+            }
+            else if (direction == 'r') {
+                if(grille[newPos[me][0]][newPos[me][1]+1]==' '){
                     return 'r';
                 }
             }
-        }
-
-        System.out.println("UNKNOWN CHARACTER:" + direction);
-        return 'X';
-
-    }
-
+            else{
+                System.out.println("UNKNOWN CHARACTER:"+direction);
+            }
+        
+        
+        return direction;
+    }*/
 }
